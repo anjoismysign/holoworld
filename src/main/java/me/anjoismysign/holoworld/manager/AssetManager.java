@@ -7,8 +7,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -34,6 +36,12 @@ public interface AssetManager<T extends DataAsset> extends Manager, Iterable<T> 
 
     default boolean isEmpty() {
         return getIdentifiers().isEmpty();
+    }
+
+    default Map<String, T> map() {
+        return stream()
+                .map(asset -> Map.entry(asset.identifier(), asset))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     default Stream<T> stream() {
