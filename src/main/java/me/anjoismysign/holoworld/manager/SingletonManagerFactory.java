@@ -7,6 +7,8 @@ import me.anjoismysign.aesthetic.DirectoryAssistant;
 import me.anjoismysign.holoworld.asset.AssetGenerator;
 import me.anjoismysign.holoworld.asset.DataAsset;
 import me.anjoismysign.holoworld.asset.DataAssetEntry;
+import me.anjoismysign.holoworld.asset.IdentityGeneration;
+import me.anjoismysign.holoworld.asset.IdentityGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,7 +18,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,7 +58,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
             @NotNull Class<T> assetClass,
             @NotNull File parentDirectory,
             @Nullable Logger logger) {
-        final Map<String, Map<String, DataAssetEntry<T>>> assetsLocales = new HashMap<>();
+        final Map<String, DataAssetEntry<T>> assets = new HashMap<>();
         final Map<String, List<String>> duplicates = new HashMap<>();
 
         //@Nullable output
@@ -74,7 +75,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
             }
 
             ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
             try {
                 T instance = objectMapper.readValue(content, assetClass);
@@ -115,15 +116,6 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 if (asset == null)
                     return;
                 String identifier = asset.identifier();
-                String locale = asset.locale();
-                if (logger != null)
-                    logger.info(identifier + ":" + locale);
-                locale = locale == null ? defaultLocale() : locale;
-                if (logger != null)
-                    logger.info("getting locale '" + locale + "' for " + path);
-                Map<String, DataAssetEntry<T>> assets = assetsLocales.computeIfAbsent(locale, (key) -> new HashMap<>());
-                if (logger != null)
-                    logger.info("loaded : " + asset.identifier() + ":" + locale + " for " + path);
                 DataAssetEntry<T> entry = parse.apply(file, asset);
                 @Nullable DataAssetEntry<T> previous = assets.put(identifier, entry);
                 if (previous == null)
@@ -133,10 +125,9 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 list.add(file.getAbsolutePath());
             });
 
-            assetsLocales.forEach((locale, assets) -> {
-                if (logger != null)
-                    logger.info("loaded locale (" + locale + ") with identifiers: [" + String.join(",", assets.keySet()) + "]");
-            });
+
+            if (logger != null)
+                logger.info("loaded with identifiers: [" + String.join(",", assets.keySet()) + "]");
         };
 
         return new AssetManager<>() {
@@ -156,13 +147,8 @@ public enum SingletonManagerFactory implements ManagerFactory {
             }
 
             @Override
-            public @NotNull String defaultLocale() {
-                return SingletonManagerFactory.this.defaultLocale();
-            }
-
-            @Override
             public void reload() {
-                assetsLocales.clear();
+                assets.clear();
                 readAll.run();
                 duplicates.forEach((key, list) -> ifLogger(logger -> {
                     String duplicates = "{" + String.join(", ", list) + "}";
@@ -172,22 +158,13 @@ public enum SingletonManagerFactory implements ManagerFactory {
             }
 
             @Override
-            public @Nullable DataAssetEntry<T> fetchAssetByLocale(@NotNull String identifier,
-                                                                  @NotNull String locale) {
-                @Nullable Map<String, DataAssetEntry<T>> lookUp = assetsLocales.get(locale);
-                Map<String, DataAssetEntry<T>> assets = lookUp == null ? Objects.requireNonNull(assetsLocales.get(defaultLocale()), fallbackMessage(assetClass, parentDirectory)) : lookUp;
+            public @Nullable DataAssetEntry<T> fetchAsset(@NotNull String identifier) {
                 return assets.get(identifier);
             }
 
             @Override
             public @NotNull Set<String> getIdentifiers() {
-                Set<String> identifiers = new HashSet<>();
-                assetsLocales.forEach(((locale, stringDataAssetEntryMap) -> {
-                    if (logger != null)
-                        logger.info("getting identifiers for locale: " + locale);
-                    identifiers.addAll(stringDataAssetEntryMap.keySet());
-                }));
-                return identifiers;
+                return assets.keySet();
             }
 
 
@@ -195,21 +172,15 @@ public enum SingletonManagerFactory implements ManagerFactory {
             public boolean add(@NotNull T element) {
                 Objects.requireNonNull(element, "'element' cannot be null");
                 String identifier = element.identifier();
-                @Nullable String elementLocale = element.locale();
-                String locale = elementLocale == null ? defaultLocale() : elementLocale;
-                File file = new File(parentDirectory, identifier);
-                String path = file.getPath();
-                ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+                File file = new File(parentDirectory, identifier + ".yml");
+                ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
                 try {
-                    mapper.writeValue(file, element);
+                    objectMapper.writeValue(file, element);
                 } catch (IOException exception) {
                     exception.printStackTrace();
                     return false;
                 }
 
-                Map<String, DataAssetEntry<T>> assets = assetsLocales.computeIfAbsent(locale, (key) -> new HashMap<>());
-                if (logger != null)
-                    logger.info("loaded : " + element.identifier() + ":" + locale + " for " + path);
                 DataAssetEntry<T> entry = parse.apply(file, element);
                 DataAssetEntry<T> previous = assets.put(identifier, entry);
                 if (previous != null) {
@@ -218,7 +189,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
                     T currentAsset = entry.asset();
                     String currentPath = entry.file().getPath();
 
-                    System.out.println(previousPath + " and " + previousAsset.identifier() + ":" + previousAsset.locale() + " was replaced by " + currentPath + " (" + currentAsset.identifier() + ":" + currentAsset.locale() + ")");
+                    System.out.println(previousPath + " and " + previousAsset.identifier() + " was replaced by " + currentPath + " (" + currentAsset.identifier() + ")");
                 }
                 return true;
             }
@@ -259,8 +230,8 @@ public enum SingletonManagerFactory implements ManagerFactory {
             @NotNull Class<? extends AssetGenerator<T>> generatorClass,
             @NotNull File parentDirectory,
             @Nullable Logger logger) {
-        final Map<String, Map<String, DataAssetEntry<? extends AssetGenerator<T>>>> assetsLocales = new HashMap<>();
-        final Map<String, Map<String, DataAssetEntry<T>>> generationsLocales = new HashMap<>();
+        final Map<String, DataAssetEntry<? extends AssetGenerator<T>>> assets = new HashMap<>();
+        final Map<String, DataAssetEntry<T>> generations = new HashMap<>();
         final Map<String, List<String>> duplicates = new HashMap<>();
 
         //@Nullable output
@@ -276,7 +247,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 return null;
             }
             ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
             try {
                 AssetGenerator<T> instance = objectMapper.readValue(content, generatorClass);
@@ -318,15 +289,6 @@ public enum SingletonManagerFactory implements ManagerFactory {
                     if (assetGenerator == null)
                         return;
                     String identifier = assetGenerator.identifier();
-                    @Nullable String locale = assetGenerator.locale();
-                    if (logger != null)
-                        logger.info(identifier + ":" + locale);
-                    locale = locale == null ? defaultLocale() : locale;
-                    if (logger != null)
-                        logger.info("getting locale '" + locale + "' for " + path);
-                    Map<String, DataAssetEntry<? extends AssetGenerator<T>>> assets = assetsLocales.computeIfAbsent(locale, (key) -> new HashMap<>());
-                    if (logger != null)
-                        logger.info("loaded : " + assetGenerator.identifier() + ":" + locale + " for " + path);
                     DataAssetEntry<? extends AssetGenerator<T>> entry = parse.apply(file, assetGenerator);
                     @Nullable DataAssetEntry<? extends AssetGenerator<T>> previous = assets.put(identifier, entry);
                     if (previous == null)
@@ -338,44 +300,39 @@ public enum SingletonManagerFactory implements ManagerFactory {
                     throwable.printStackTrace();
                 }
             });
-            assetsLocales.forEach((locale, assets) -> {
-                try {
-                    if (logger != null)
-                        logger.info("loaded locale (" + locale + ") with identifiers: [" + String.join(",", assets.keySet()) + "]");
 
-                    Map<String, DataAssetEntry<T>> generations = generationsLocales.computeIfAbsent(locale, (key) -> new HashMap<>());
-                    assets.forEach((identifier, generatorEntry) -> {
-                        File file = generatorEntry.file();
-                        T asset = generatorEntry.asset().generate();
-                        if (logger != null) {
-                            if (asset == null)
-                                logger.severe("asset is null: " + file.getPath());
-                            else
-                                logger.info("loaded generation: " + asset.identifier() + ":" + locale);
+            try {
+                if (logger != null)
+                    logger.info("loaded with identifiers: [" + String.join(",", assets.keySet()) + "]");
+
+                assets.forEach((identifier, generatorEntry) -> {
+                    File file = generatorEntry.file();
+                    T asset = generatorEntry.asset().generate();
+                    if (logger != null) {
+                        logger.info("loaded generation: " + asset.identifier());
+                    }
+                    DataAssetEntry<T> assetEntry = new DataAssetEntry<>() {
+                        @Override
+                        public @NotNull File file() {
+                            return file;
                         }
-                        DataAssetEntry<T> assetEntry = new DataAssetEntry<>() {
-                            @Override
-                            public @NotNull File file() {
-                                return file;
-                            }
 
-                            @Override
-                            public @NotNull T asset() {
-                                return asset;
-                            }
-                        };
-                        if (logger != null)
-                            logger.info("loaded DataAssetEntry: " + asset.identifier() + ":" + locale);
-
-                        generations.put(identifier, assetEntry);
-                    });
-
+                        @Override
+                        public @NotNull T asset() {
+                            return asset;
+                        }
+                    };
                     if (logger != null)
-                        logger.info("loaded locale (" + locale + ") with generations: " + String.join(",", generations.keySet()));
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                }
-            });
+                        logger.info("loaded DataAssetEntry: " + asset.identifier());
+
+                    generations.put(identifier, assetEntry);
+                });
+
+                if (logger != null)
+                    logger.info("loaded with generations: " + String.join(",", generations.keySet()));
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
+            }
         };
 
         return new GeneratorManager<>() {
@@ -390,49 +347,29 @@ public enum SingletonManagerFactory implements ManagerFactory {
             }
 
             @Override
-            public @NotNull String defaultLocale() {
-                return SingletonManagerFactory.this.defaultLocale();
-            }
-
-            @Override
-            public @Nullable DataAssetEntry<T> fetchGenerationByLocale(@NotNull String identifier,
-                                                                       @NotNull String locale) {
-                @Nullable Map<String, DataAssetEntry<T>> lookUp = generationsLocales.get(locale);
-                Map<String, DataAssetEntry<T>> generations = lookUp == null ? Objects.requireNonNull(generationsLocales.get(defaultLocale()), fallbackMessage(generatorClass, parentDirectory)) : lookUp;
+            public @Nullable DataAssetEntry<T> fetchGeneration(@NotNull String identifier) {
                 return generations.get(identifier);
             }
 
 
             @Override
             public @NotNull Set<String> getIdentifiers() {
-                Set<String> identifiers = new HashSet<>();
-                generationsLocales.forEach(((locale, stringDataAssetEntryMap) -> {
-                    if (logger != null)
-                        logger.info("getting identifiers for locale: " + locale);
-                    identifiers.addAll(stringDataAssetEntryMap.keySet());
-                }));
-                return identifiers;
+                return generations.keySet();
             }
 
             @Override
             public boolean add(@NotNull AssetGenerator<T> element) {
                 Objects.requireNonNull(element, "'element' cannot be null");
                 String identifier = element.identifier();
-                @Nullable String elementLocale = element.locale();
-                String locale = elementLocale == null ? defaultLocale() : elementLocale;
-                File file = new File(parentDirectory, identifier);
-                String path = file.getPath();
-                ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+                File file = new File(parentDirectory, identifier + ".yml");
+                ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
                 try {
-                    mapper.writeValue(file, element);
+                    objectMapper.writeValue(file, element);
                 } catch (IOException exception) {
                     exception.printStackTrace();
                     return false;
                 }
 
-                Map<String, DataAssetEntry<? extends AssetGenerator<T>>> assets = assetsLocales.computeIfAbsent(locale, (key) -> new HashMap<>());
-                if (logger != null)
-                    logger.info("loaded : " + element.identifier() + ":" + locale + " for " + path);
                 DataAssetEntry<? extends AssetGenerator<T>> entry = parse.apply(file, element);
                 DataAssetEntry<? extends AssetGenerator<T>> previous = assets.put(identifier, entry);
                 if (previous != null) {
@@ -441,7 +378,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
                     AssetGenerator<T> currentGenerator = entry.asset();
                     String currentPath = entry.file().getPath();
 
-                    System.out.println(previousPath + " and " + previousGenerator.identifier() + ":" + previousGenerator.locale() + " was replaced by " + currentPath + " (" + currentGenerator.identifier() + ":" + currentGenerator.locale() + ")");
+                    System.out.println(previousPath + " and " + previousGenerator.identifier() + " was replaced by " + currentPath + " (" + currentGenerator.identifier() + ")");
                 }
                 return true;
             }
@@ -453,14 +390,14 @@ public enum SingletonManagerFactory implements ManagerFactory {
 
             @Override
             public void reload() {
-                generationsLocales.clear();
+                generations.clear();
                 readAll.run();
                 duplicates.forEach((key, list) -> ifLogger(logger -> {
                     String duplicates = "{" + String.join(", ", list) + "}";
                     logger.severe(generatorClass.getSimpleName() + " has duplicates for'" + key + "' : " + duplicates);
                 }));
                 duplicates.clear();
-                assetsLocales.clear();
+                assets.clear();
             }
         };
     }
@@ -483,4 +420,216 @@ public enum SingletonManagerFactory implements ManagerFactory {
         unloaded.reload();
         return unloaded;
     }
+
+    /**
+     * Creates an identity manager for the specified generator class and parent directory.
+     * Needs to be reloaded manually.
+     * Useful in case of looking for instantiation while delaying assets loading.
+     *
+     * @param <T>             the type of data asset
+     * @param generatorClass  the class of the asset generator
+     * @param parentDirectory the parent directory for the assets
+     * @param logger          the logger to use for logging
+     * @return an unloaded identity manager
+     */
+    public <T extends DataAsset> IdentityManager<T> unloadedIdentityManager(
+            @NotNull Class<? extends IdentityGenerator<T>> generatorClass,
+            @NotNull File parentDirectory,
+            @Nullable Logger logger) {
+        final Map<String, DataAssetEntry<? extends IdentityGeneration<T>>> assets = new HashMap<>();
+        final Map<String, DataAssetEntry<T>> generations = new HashMap<>();
+        final Map<String, List<String>> duplicates = new HashMap<>();
+
+        //@Nullable output
+        Function<File, IdentityGeneration<T>> read = file -> {
+            Objects.requireNonNull(file, "'file' cannot be null");
+            if (!file.isFile())
+                return null;
+            String identifier = file.getName().replace(".yml", "");
+            String content;
+            try {
+                content = new String(Files.readAllBytes(file.toPath()));
+            } catch (IOException exception) {
+                exception.printStackTrace();
+                return null;
+            }
+            ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
+            objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
+            String path = file.getPath();
+            try {
+                IdentityGenerator<T> instance = objectMapper.readValue(content, generatorClass);
+                Objects.requireNonNull(identifier, path + " attempted to be read, but 'identifier' cannot be null");
+                return new IdentityGeneration<>(identifier, instance);
+            } catch (Throwable throwable) {
+                throw new RuntimeException("Found the following issue at '" + path + "'\n" + throwable.getMessage());
+            }
+        };
+
+        BiFunction<File, IdentityGeneration<T>, DataAssetEntry<IdentityGeneration<T>>> parse = ((file, dataAsset) -> new DataAssetEntry<>() {
+            public @NotNull File file() {
+                return file;
+            }
+
+            public @NotNull IdentityGeneration<T> asset() {
+                return dataAsset;
+            }
+        });
+
+        Runnable readAll = () -> {
+            if (!parentDirectory.exists()) {
+                parentDirectory.mkdirs();
+                return;
+            }
+
+            String extension = ".yml";
+
+            DirectoryAssistant directoryAssistant = DirectoryAssistant.of(parentDirectory);
+            Collection<File> files = directoryAssistant.listRecursively(extension);
+            if (logger != null)
+                logger.info(parentDirectory.getPath() + " has this many files (" + files.size() + ")");
+            files.forEach(file -> {
+                try {
+                    String path = file.getPath();
+                    if (logger != null)
+                        logger.info(path);
+                    @Nullable IdentityGeneration<T> identityGenerator = read.apply(file);
+                    if (identityGenerator == null)
+                        return;
+                    String identifier = identityGenerator.identifier();
+                    DataAssetEntry<? extends IdentityGeneration<T>> entry = parse.apply(file, identityGenerator);
+                    @Nullable DataAssetEntry<? extends IdentityGeneration<T>> previous = assets.put(identifier, entry);
+                    if (previous == null)
+                        return;
+                    List<String> list = duplicates.computeIfAbsent(identifier, k -> new ArrayList<>());
+                    list.add(previous.file().getAbsolutePath());
+                    list.add(file.getAbsolutePath());
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+            });
+
+            try {
+                if (logger != null)
+                    logger.info("loaded with identifiers: [" + String.join(",", assets.keySet()) + "]");
+
+                assets.forEach((identifier, generatorEntry) -> {
+                    File file = generatorEntry.file();
+                    IdentityGeneration<T> generation = generatorEntry.asset();
+                    T asset = generation.asset();
+                    if (logger != null) {
+                        if (asset == null)
+                            logger.severe("asset is null: " + file.getPath());
+                        else
+                            logger.info("loaded generation: " + asset.identifier());
+                    }
+                    DataAssetEntry<T> assetEntry = new DataAssetEntry<>() {
+                        @Override
+                        public @NotNull File file() {
+                            return file;
+                        }
+
+                        @Override
+                        public @NotNull T asset() {
+                            return asset;
+                        }
+                    };
+                    if (logger != null)
+                        logger.info("loaded DataAssetEntry: " + asset.identifier());
+
+                    generations.put(identifier, assetEntry);
+                });
+
+                if (logger != null)
+                    logger.info("loaded with generations: " + String.join(",", generations.keySet()));
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
+            }
+        };
+
+        return new IdentityManager<>() {
+
+            @Override
+            public @NotNull Class<? extends IdentityGenerator<T>> generatorClass() {
+                return generatorClass;
+            }
+
+            @Override
+            public @NotNull File directory() {
+                return parentDirectory;
+            }
+
+            @Override
+            public @Nullable DataAssetEntry<T> fetchGeneration(@NotNull String identifier) {
+                return generations.get(identifier);
+            }
+
+            @Override
+            public @NotNull Set<String> getIdentifiers() {
+                return generations.keySet();
+            }
+
+            @Override
+            public boolean add(@NotNull IdentityGeneration<T> element) {
+                Objects.requireNonNull(element, "'element' cannot be null");
+                String identifier = element.identifier();
+                File file = new File(parentDirectory, identifier + ".yml");
+                ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
+                try {
+                    objectMapper.writeValue(file, element.generator());
+                } catch (IOException exception) {
+                    exception.printStackTrace();
+                    return false;
+                }
+
+                DataAssetEntry<? extends IdentityGeneration<T>> entry = parse.apply(file, element);
+                DataAssetEntry<? extends IdentityGeneration<T>> previous = assets.put(identifier, entry);
+                if (previous != null) {
+                    IdentityGeneration<T> previousGenerator = previous.asset();
+                    String previousPath = previous.file().getPath();
+                    IdentityGeneration<T> currentGenerator = entry.asset();
+                    String currentPath = entry.file().getPath();
+
+                    System.out.println(previousPath + " and " + previousGenerator.identifier() + " was replaced by " + currentPath + " (" + currentGenerator.identifier() + ")");
+                }
+                return true;
+            }
+
+            @Override
+            public @Nullable Logger logger() {
+                return logger;
+            }
+
+            @Override
+            public void reload() {
+                generations.clear();
+                readAll.run();
+                duplicates.forEach((key, list) -> ifLogger(logger -> {
+                    String duplicates = "{" + String.join(", ", list) + "}";
+                    logger.severe(generatorClass.getSimpleName() + " has duplicates for'" + key + "' : " + duplicates);
+                }));
+                duplicates.clear();
+                assets.clear();
+            }
+        };
+    }
+
+    /**
+     * Creates an identity manager for the specified generator class and parent directory.
+     * Automatically reloads the identity manager.
+     *
+     * @param <T>             the type of data asset
+     * @param generatorClass  the class of the asset generator
+     * @param parentDirectory the parent directory for the assets
+     * @param logger          the logger to use for logging
+     * @return a loaded identity manager
+     */
+    public <T extends DataAsset> IdentityManager<T> identityManager(
+            @NotNull Class<? extends IdentityGenerator<T>> generatorClass,
+            @NotNull File parentDirectory,
+            @Nullable Logger logger) {
+        IdentityManager<T> unloaded = unloadedIdentityManager(generatorClass, parentDirectory, logger);
+        unloaded.reload();
+        return unloaded;
+    }
+
 }

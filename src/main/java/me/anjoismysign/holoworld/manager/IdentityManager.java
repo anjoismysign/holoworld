@@ -2,31 +2,44 @@ package me.anjoismysign.holoworld.manager;
 
 import me.anjoismysign.holoworld.asset.DataAsset;
 import me.anjoismysign.holoworld.asset.DataAssetEntry;
+import me.anjoismysign.holoworld.asset.IdentityGeneration;
+import me.anjoismysign.holoworld.asset.IdentityGenerator;
+import me.anjoismysign.holoworld.exception.GenerationNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public interface AssetManager<T extends DataAsset> extends Manager, Iterable<T> {
+public interface IdentityManager<T extends DataAsset> extends Manager, Iterable<T> {
 
     @NotNull
-    Class<T> assetClass();
+    Class<? extends IdentityGenerator<T>> generatorClass();
 
     @NotNull
     File directory();
 
     @Nullable
-    DataAssetEntry<T> fetchAsset(@NotNull String identifier);
+    DataAssetEntry<T> fetchGeneration(@NotNull String identifier);
+
+    @NotNull
+    default DataAssetEntry<T> getGeneration(@NotNull String identifier) {
+        DataAssetEntry<T> entry = fetchGeneration(identifier);
+        if (entry == null)
+            throw new GenerationNotFoundException(identifier, generatorClass());
+        return entry;
+    }
 
     @NotNull
     Set<String> getIdentifiers();
 
-    boolean add(@NotNull T element);
+    boolean add(@NotNull IdentityGeneration<T> element);
 
     default int size() {
         return getIdentifiers().size();
@@ -34,6 +47,12 @@ public interface AssetManager<T extends DataAsset> extends Manager, Iterable<T> 
 
     default boolean isEmpty() {
         return getIdentifiers().isEmpty();
+    }
+
+    default Map<String, T> map() {
+        return stream()
+                .map(asset -> Map.entry(asset.identifier(), asset))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     default Stream<T> stream() {
@@ -46,7 +65,6 @@ public interface AssetManager<T extends DataAsset> extends Manager, Iterable<T> 
 
     @Override
     default Iterator<T> iterator() {
-        // The iterator goes over the identifiers and returns the asset (via fetchAsset)
         return new Iterator<>() {
             private final Iterator<String> idIterator = getIdentifiers().iterator();
 
@@ -58,7 +76,7 @@ public interface AssetManager<T extends DataAsset> extends Manager, Iterable<T> 
             @Override
             public T next() {
                 String id = idIterator.next();
-                DataAssetEntry<T> entry = fetchAsset(id);
+                DataAssetEntry<T> entry = fetchGeneration(id);
                 return Objects.requireNonNull(entry, "entry is null").asset();
             }
         };

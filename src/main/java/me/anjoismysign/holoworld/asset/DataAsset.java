@@ -1,8 +1,6 @@
 package me.anjoismysign.holoworld.asset;
 
-import org.jetbrains.annotations.NotNull;
+import me.anjoismysign.holoworld.Identifiable;
 
-public interface DataAsset extends Localizable {
-    @NotNull
-    String identifier();
+public interface DataAsset extends Identifiable {
 }
