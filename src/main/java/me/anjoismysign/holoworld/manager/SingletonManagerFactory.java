@@ -152,7 +152,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 readAll.run();
                 duplicates.forEach((key, list) -> ifLogger(logger -> {
                     String duplicates = "{" + String.join(", ", list) + "}";
-                    logger.severe(assetClass().getSimpleName() + " has duplicates for'" + key + "' : " + duplicates);
+                    logger.severe(assetClass().getCanonicalName() + " has duplicates for'" + key + "' : " + duplicates);
                 }));
                 duplicates.clear();
             }
@@ -394,7 +394,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 readAll.run();
                 duplicates.forEach((key, list) -> ifLogger(logger -> {
                     String duplicates = "{" + String.join(", ", list) + "}";
-                    logger.severe(generatorClass.getSimpleName() + " has duplicates for'" + key + "' : " + duplicates);
+                    logger.severe(generatorClass.getCanonicalName() + " has duplicates for'" + key + "' : " + duplicates);
                 }));
                 duplicates.clear();
                 assets.clear();
@@ -605,7 +605,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 readAll.run();
                 duplicates.forEach((key, list) -> ifLogger(logger -> {
                     String duplicates = "{" + String.join(", ", list) + "}";
-                    logger.severe(generatorClass.getSimpleName() + " has duplicates for'" + key + "' : " + duplicates);
+                    logger.severe(generatorClass.getCanonicalName() + " has duplicates for'" + key + "' : " + duplicates);
                 }));
                 duplicates.clear();
                 assets.clear();
