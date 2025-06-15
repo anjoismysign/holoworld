@@ -1,4 +1,4 @@
-package me.anjoismysign.holoworld.exception;
+package io.github.anjoismysign.holoworld.exception;
 
 public class GenerationNotFoundException extends NullPointerException {
 

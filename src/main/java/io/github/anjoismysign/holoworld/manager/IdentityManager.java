@@ -1,10 +1,10 @@
-package me.anjoismysign.holoworld.manager;
+package io.github.anjoismysign.holoworld.manager;
 
-import me.anjoismysign.holoworld.asset.DataAsset;
-import me.anjoismysign.holoworld.asset.DataAssetEntry;
-import me.anjoismysign.holoworld.asset.IdentityGeneration;
-import me.anjoismysign.holoworld.asset.IdentityGenerator;
-import me.anjoismysign.holoworld.exception.GenerationNotFoundException;
+import io.github.anjoismysign.holoworld.asset.DataAsset;
+import io.github.anjoismysign.holoworld.asset.DataAssetEntry;
+import io.github.anjoismysign.holoworld.asset.IdentityGeneration;
+import io.github.anjoismysign.holoworld.asset.IdentityGenerator;
+import io.github.anjoismysign.holoworld.exception.GenerationNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

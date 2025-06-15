@@ -1,7 +1,7 @@
-package me.anjoismysign.holoworld.manager;
+package io.github.anjoismysign.holoworld.manager;
 
-import me.anjoismysign.holoworld.asset.AssetGenerator;
-import me.anjoismysign.holoworld.asset.DataAsset;
+import io.github.anjoismysign.holoworld.asset.AssetGenerator;
+import io.github.anjoismysign.holoworld.asset.DataAsset;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

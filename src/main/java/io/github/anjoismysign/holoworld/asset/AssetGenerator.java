@@ -1,4 +1,4 @@
-package me.anjoismysign.holoworld.asset;
+package io.github.anjoismysign.holoworld.asset;
 
 import org.jetbrains.annotations.NotNull;
 

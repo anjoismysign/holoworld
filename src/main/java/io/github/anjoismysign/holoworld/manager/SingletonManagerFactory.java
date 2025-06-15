@@ -1,14 +1,14 @@
-package me.anjoismysign.holoworld.manager;
+package io.github.anjoismysign.holoworld.manager;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import me.anjoismysign.aesthetic.DirectoryAssistant;
-import me.anjoismysign.holoworld.asset.AssetGenerator;
-import me.anjoismysign.holoworld.asset.DataAsset;
-import me.anjoismysign.holoworld.asset.DataAssetEntry;
-import me.anjoismysign.holoworld.asset.IdentityGeneration;
-import me.anjoismysign.holoworld.asset.IdentityGenerator;
+import io.github.anjoismysign.aesthetic.DirectoryAssistant;
+import io.github.anjoismysign.holoworld.asset.AssetGenerator;
+import io.github.anjoismysign.holoworld.asset.DataAsset;
+import io.github.anjoismysign.holoworld.asset.DataAssetEntry;
+import io.github.anjoismysign.holoworld.asset.IdentityGeneration;
+import io.github.anjoismysign.holoworld.asset.IdentityGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

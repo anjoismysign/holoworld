@@ -1,4 +1,4 @@
-package me.anjoismysign.holoworld.manager;
+package io.github.anjoismysign.holoworld.manager;
 
 import org.jetbrains.annotations.Nullable;
 
