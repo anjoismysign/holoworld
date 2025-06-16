@@ -43,21 +43,11 @@ public enum SingletonManagerFactory implements ManagerFactory {
         return "Couldn't fallback to default locale: '" + defaultLocale() + "'\nAt: " + parentDirectory.getPath();
     }
 
-    /**
-     * Creates an asset manager for the specified asset class and parent directory.
-     * Needs to be reloaded manually.
-     * Useful in case of looking for instantiation while delaying assets loading.
-     *
-     * @param <T>             the type of data asset
-     * @param assetClass      the class of the data asset
-     * @param parentDirectory the parent directory for the assets
-     * @param logger          the logger to use for logging
-     * @return an unloaded asset manager
-     */
     public <T extends DataAsset> AssetManager<T> unloadedAssetManager(
             @NotNull Class<T> assetClass,
             @NotNull File parentDirectory,
-            @Nullable Logger logger) {
+            @Nullable Logger logger,
+            boolean failOnNullField) {
         final Map<String, DataAssetEntry<T>> assets = new HashMap<>();
         final Map<String, List<String>> duplicates = new HashMap<>();
 
@@ -75,7 +65,8 @@ public enum SingletonManagerFactory implements ManagerFactory {
             }
 
             ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
+            if (failOnNullField)
+                objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
             try {
                 T instance = objectMapper.readValue(content, assetClass);
@@ -196,21 +187,16 @@ public enum SingletonManagerFactory implements ManagerFactory {
         };
     }
 
-    /**
-     * Creates an asset manager for the specified asset class and parent directory.
-     * Automatically reloads the asset manager.
-     *
-     * @param <T>             the type of data asset
-     * @param assetClass      the class of the data asset
-     * @param parentDirectory the parent directory for the assets
-     * @param logger          the logger to use for logging
-     * @return a loaded asset manager
-     */
     public <T extends DataAsset> AssetManager<T> assetManager(
             @NotNull Class<T> assetClass,
             @NotNull File parentDirectory,
-            @Nullable Logger logger) {
-        AssetManager<T> unloaded = unloadedAssetManager(assetClass, parentDirectory, logger);
+            @Nullable Logger logger,
+            boolean failOnNullField) {
+        AssetManager<T> unloaded = unloadedAssetManager(
+                assetClass,
+                parentDirectory,
+                logger,
+                failOnNullField);
         unloaded.reload();
         return unloaded;
     }
@@ -229,7 +215,8 @@ public enum SingletonManagerFactory implements ManagerFactory {
     public <T extends DataAsset> GeneratorManager<T> unloadedGeneratorManager(
             @NotNull Class<? extends AssetGenerator<T>> generatorClass,
             @NotNull File parentDirectory,
-            @Nullable Logger logger) {
+            @Nullable Logger logger,
+            boolean failOnNullField) {
         final Map<String, DataAssetEntry<? extends AssetGenerator<T>>> assets = new HashMap<>();
         final Map<String, DataAssetEntry<T>> generations = new HashMap<>();
         final Map<String, List<String>> duplicates = new HashMap<>();
@@ -247,7 +234,8 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 return null;
             }
             ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
+            if (failOnNullField)
+                objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
             try {
                 AssetGenerator<T> instance = objectMapper.readValue(content, generatorClass);
@@ -402,40 +390,25 @@ public enum SingletonManagerFactory implements ManagerFactory {
         };
     }
 
-    /**
-     * Creates a generator manager for the specified generator class and parent directory.
-     * Automatically reloads the generator manager.
-     *
-     * @param <T>             the type of data asset
-     * @param generatorClass  the class of the asset generator
-     * @param parentDirectory the parent directory for the assets
-     * @param logger          the logger to use for logging
-     * @return a loaded generator manager
-     */
     public <T extends DataAsset> GeneratorManager<T> generatorManager(
             @NotNull Class<? extends AssetGenerator<T>> generatorClass,
             @NotNull File parentDirectory,
-            @Nullable Logger logger) {
-        GeneratorManager<T> unloaded = unloadedGeneratorManager(generatorClass, parentDirectory, logger);
+            @Nullable Logger logger,
+            boolean failOnNullField) {
+        GeneratorManager<T> unloaded = unloadedGeneratorManager(
+                generatorClass,
+                parentDirectory,
+                logger,
+                failOnNullField);
         unloaded.reload();
         return unloaded;
     }
 
-    /**
-     * Creates an identity manager for the specified generator class and parent directory.
-     * Needs to be reloaded manually.
-     * Useful in case of looking for instantiation while delaying assets loading.
-     *
-     * @param <T>             the type of data asset
-     * @param generatorClass  the class of the asset generator
-     * @param parentDirectory the parent directory for the assets
-     * @param logger          the logger to use for logging
-     * @return an unloaded identity manager
-     */
     public <T extends DataAsset> IdentityManager<T> unloadedIdentityManager(
             @NotNull Class<? extends IdentityGenerator<T>> generatorClass,
             @NotNull File parentDirectory,
-            @Nullable Logger logger) {
+            @Nullable Logger logger,
+            boolean failOnNullField) {
         final Map<String, DataAssetEntry<? extends IdentityGeneration<T>>> assets = new HashMap<>();
         final Map<String, DataAssetEntry<T>> generations = new HashMap<>();
         final Map<String, List<String>> duplicates = new HashMap<>();
@@ -454,7 +427,8 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 return null;
             }
             ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
+            if (failOnNullField)
+                objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
             try {
                 IdentityGenerator<T> instance = objectMapper.readValue(content, generatorClass);
@@ -613,21 +587,16 @@ public enum SingletonManagerFactory implements ManagerFactory {
         };
     }
 
-    /**
-     * Creates an identity manager for the specified generator class and parent directory.
-     * Automatically reloads the identity manager.
-     *
-     * @param <T>             the type of data asset
-     * @param generatorClass  the class of the asset generator
-     * @param parentDirectory the parent directory for the assets
-     * @param logger          the logger to use for logging
-     * @return a loaded identity manager
-     */
     public <T extends DataAsset> IdentityManager<T> identityManager(
             @NotNull Class<? extends IdentityGenerator<T>> generatorClass,
             @NotNull File parentDirectory,
-            @Nullable Logger logger) {
-        IdentityManager<T> unloaded = unloadedIdentityManager(generatorClass, parentDirectory, logger);
+            @Nullable Logger logger,
+            boolean failOnNullField) {
+        IdentityManager<T> unloaded = unloadedIdentityManager(
+                generatorClass,
+                parentDirectory,
+                logger,
+                failOnNullField);
         unloaded.reload();
         return unloaded;
     }
