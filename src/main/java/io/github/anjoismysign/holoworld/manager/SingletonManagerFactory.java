@@ -1,8 +1,5 @@
 package io.github.anjoismysign.holoworld.manager;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.github.anjoismysign.aesthetic.DirectoryAssistant;
 import io.github.anjoismysign.holoworld.asset.AssetGenerator;
 import io.github.anjoismysign.holoworld.asset.DataAsset;
@@ -11,9 +8,19 @@ import io.github.anjoismysign.holoworld.asset.IdentityGeneration;
 import io.github.anjoismysign.holoworld.asset.IdentityGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,16 +71,14 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 return null;
             }
 
-            ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            if (failOnNullField)
-                objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
-            try {
-                T instance = objectMapper.readValue(content, assetClass);
+            try (FileInputStream fileInputStream = new FileInputStream(file)) {
+                Yaml yaml = new Yaml(new Constructor(assetClass, new LoaderOptions()));
+                T instance = yaml.load(fileInputStream);
                 Objects.requireNonNull(instance.identifier(), path + " attempted to be read, but 'identifier' cannot be null");
                 return instance;
             } catch (Throwable throwable) {
-                throw new RuntimeException("Found the following issue at '" + path + "'\n" + throwable.getMessage());
+                throw new RuntimeException("Found the following issue at '" + path + "'\n" + toStackTrace(throwable));
             }
         };
 
@@ -164,12 +169,15 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 Objects.requireNonNull(element, "'element' cannot be null");
                 String identifier = element.identifier();
                 File file = new File(parentDirectory, identifier + ".yml");
-                ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-                try {
-                    objectMapper.writeValue(file, element);
-                } catch (IOException exception) {
-                    exception.printStackTrace();
-                    return false;
+                String path = file.getPath();
+
+                Representer representer = new Representer(new DumperOptions());
+                representer.addClassTag(assetClass, Tag.MAP);
+                Yaml yaml = new Yaml(representer);
+                try (FileWriter writer = new FileWriter(file.getAbsolutePath())) {
+                    yaml.dump(element, writer);
+                } catch (Throwable throwable) {
+                    throw new RuntimeException("Found the following issue at '" + path + "'\n" + toStackTrace(throwable));
                 }
 
                 DataAssetEntry<T> entry = parse.apply(file, element);
@@ -233,16 +241,14 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 exception.printStackTrace();
                 return null;
             }
-            ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            if (failOnNullField)
-                objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
-            try {
-                AssetGenerator<T> instance = objectMapper.readValue(content, generatorClass);
+            try (FileInputStream fileInputStream = new FileInputStream(file)) {
+                Yaml yaml = new Yaml(new Constructor(generatorClass, new LoaderOptions()));
+                AssetGenerator<T> instance = yaml.load(fileInputStream);
                 Objects.requireNonNull(instance.identifier(), path + " attempted to be read, but 'identifier' cannot be null");
                 return instance;
             } catch (Throwable throwable) {
-                throw new RuntimeException("Found the following issue at '" + path + "'\n" + throwable.getMessage());
+                throw new RuntimeException("Found the following issue at '" + path + "'\n" + toStackTrace(throwable));
             }
         };
 
@@ -350,12 +356,15 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 Objects.requireNonNull(element, "'element' cannot be null");
                 String identifier = element.identifier();
                 File file = new File(parentDirectory, identifier + ".yml");
-                ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-                try {
-                    objectMapper.writeValue(file, element);
-                } catch (IOException exception) {
-                    exception.printStackTrace();
-                    return false;
+                String path = file.getPath();
+
+                Representer representer = new Representer(new DumperOptions());
+                representer.addClassTag(generatorClass, Tag.MAP);
+                Yaml yaml = new Yaml(representer);
+                try (FileWriter writer = new FileWriter(file.getAbsolutePath())) {
+                    yaml.dump(element, writer);
+                } catch (Throwable throwable) {
+                    throw new RuntimeException("Found the following issue at '" + path + "'\n" + toStackTrace(throwable));
                 }
 
                 DataAssetEntry<? extends AssetGenerator<T>> entry = parse.apply(file, element);
@@ -426,16 +435,14 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 exception.printStackTrace();
                 return null;
             }
-            ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-            if (failOnNullField)
-                objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES);
             String path = file.getPath();
-            try {
-                IdentityGenerator<T> instance = objectMapper.readValue(content, generatorClass);
+            try (FileInputStream fileInputStream = new FileInputStream(file)) {
+                Yaml yaml = new Yaml(new Constructor(generatorClass, new LoaderOptions()));
+                IdentityGenerator<T> instance = yaml.load(fileInputStream);
                 Objects.requireNonNull(identifier, path + " attempted to be read, but 'identifier' cannot be null");
                 return new IdentityGeneration<>(identifier, instance);
             } catch (Throwable throwable) {
-                throw new RuntimeException("Found the following issue at '" + path + "'\n" + throwable.getMessage());
+                throw new RuntimeException("Found the following issue at '" + path + "'\n" + toStackTrace(throwable));
             }
         };
 
@@ -547,12 +554,15 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 Objects.requireNonNull(element, "'element' cannot be null");
                 String identifier = element.identifier();
                 File file = new File(parentDirectory, identifier + ".yml");
-                ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-                try {
-                    objectMapper.writeValue(file, element.generator());
-                } catch (IOException exception) {
-                    exception.printStackTrace();
-                    return false;
+                String path = file.getPath();
+
+                Representer representer = new Representer(new DumperOptions());
+                representer.addClassTag(generatorClass, Tag.MAP);
+                Yaml yaml = new Yaml(representer);
+                try (FileWriter writer = new FileWriter(file.getAbsolutePath())) {
+                    yaml.dump(element, writer);
+                } catch (Throwable throwable) {
+                    throw new RuntimeException("Found the following issue at '" + path + "'\n" + toStackTrace(throwable));
                 }
 
                 DataAssetEntry<? extends IdentityGeneration<T>> entry = parse.apply(file, element);
@@ -599,6 +609,13 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 failOnNullField);
         unloaded.reload();
         return unloaded;
+    }
+
+    private String toStackTrace(@NotNull Throwable throwable) {
+        StringWriter stringWriter = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(stringWriter);
+        throwable.printStackTrace(printWriter);
+        return stringWriter.toString();
     }
 
 }
