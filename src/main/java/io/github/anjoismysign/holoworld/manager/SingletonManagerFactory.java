@@ -73,7 +73,9 @@ public enum SingletonManagerFactory implements ManagerFactory {
 
             String path = file.getPath();
             try (FileInputStream fileInputStream = new FileInputStream(file)) {
-                Yaml yaml = new Yaml(new Constructor(assetClass, new LoaderOptions()));
+                Constructor constructor = new Constructor(assetClass, new LoaderOptions());
+                constructor.getPropertyUtils().setSkipMissingProperties(!failOnNullField);
+                Yaml yaml = new Yaml();
                 T instance = yaml.load(fileInputStream);
                 Objects.requireNonNull(instance.identifier(), path + " attempted to be read, but 'identifier' cannot be null");
                 return instance;
@@ -243,7 +245,9 @@ public enum SingletonManagerFactory implements ManagerFactory {
             }
             String path = file.getPath();
             try (FileInputStream fileInputStream = new FileInputStream(file)) {
-                Yaml yaml = new Yaml(new Constructor(generatorClass, new LoaderOptions()));
+                Constructor constructor = new Constructor(generatorClass, new LoaderOptions());
+                constructor.getPropertyUtils().setSkipMissingProperties(!failOnNullField);
+                Yaml yaml = new Yaml(constructor);
                 AssetGenerator<T> instance = yaml.load(fileInputStream);
                 Objects.requireNonNull(instance.identifier(), path + " attempted to be read, but 'identifier' cannot be null");
                 return instance;
@@ -437,7 +441,9 @@ public enum SingletonManagerFactory implements ManagerFactory {
             }
             String path = file.getPath();
             try (FileInputStream fileInputStream = new FileInputStream(file)) {
-                Yaml yaml = new Yaml(new Constructor(generatorClass, new LoaderOptions()));
+                Constructor constructor = new Constructor(generatorClass, new LoaderOptions());
+                constructor.getPropertyUtils().setSkipMissingProperties(!failOnNullField);
+                Yaml yaml = new Yaml(constructor);
                 IdentityGenerator<T> instance = yaml.load(fileInputStream);
                 Objects.requireNonNull(identifier, path + " attempted to be read, but 'identifier' cannot be null");
                 return new IdentityGeneration<>(identifier, instance);
