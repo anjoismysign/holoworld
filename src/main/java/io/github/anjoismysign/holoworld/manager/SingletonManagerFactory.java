@@ -566,7 +566,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
                 representer.addClassTag(generatorClass, Tag.MAP);
                 Yaml yaml = new Yaml(representer);
                 try (FileWriter writer = new FileWriter(file.getAbsolutePath())) {
-                    yaml.dump(element, writer);
+                    yaml.dump(element.generator(), writer);
                 } catch (Throwable throwable) {
                     throw new RuntimeException("Found the following issue at '" + path + "'\n" + toStackTrace(throwable));
                 }
