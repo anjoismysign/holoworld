@@ -75,7 +75,7 @@ public enum SingletonManagerFactory implements ManagerFactory {
             try (FileInputStream fileInputStream = new FileInputStream(file)) {
                 Constructor constructor = new Constructor(assetClass, new LoaderOptions());
                 constructor.getPropertyUtils().setSkipMissingProperties(!failOnNullField);
-                Yaml yaml = new Yaml();
+                Yaml yaml = new Yaml(constructor);
                 T instance = yaml.load(fileInputStream);
                 Objects.requireNonNull(instance.identifier(), path + " attempted to be read, but 'identifier' cannot be null");
                 return instance;
