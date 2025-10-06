@@ -63,14 +63,6 @@ public enum SingletonManagerFactory implements ManagerFactory {
             Objects.requireNonNull(file, "'file' cannot be null");
             if (!file.isFile())
                 return null;
-            String content;
-            try {
-                content = new String(Files.readAllBytes(file.toPath()));
-            } catch (IOException exception) {
-                exception.printStackTrace();
-                return null;
-            }
-
             String path = file.getPath();
             try (FileInputStream fileInputStream = new FileInputStream(file)) {
                 Constructor constructor = new Constructor(assetClass, new LoaderOptions());
@@ -236,13 +228,6 @@ public enum SingletonManagerFactory implements ManagerFactory {
             Objects.requireNonNull(file, "'file' cannot be null");
             if (!file.isFile())
                 return null;
-            String content;
-            try {
-                content = new String(Files.readAllBytes(file.toPath()));
-            } catch (IOException exception) {
-                exception.printStackTrace();
-                return null;
-            }
             String path = file.getPath();
             try (FileInputStream fileInputStream = new FileInputStream(file)) {
                 Constructor constructor = new Constructor(generatorClass, new LoaderOptions());
@@ -432,13 +417,6 @@ public enum SingletonManagerFactory implements ManagerFactory {
             if (!file.isFile())
                 return null;
             String identifier = file.getName().replace(".yml", "");
-            String content;
-            try {
-                content = new String(Files.readAllBytes(file.toPath()));
-            } catch (IOException exception) {
-                exception.printStackTrace();
-                return null;
-            }
             String path = file.getPath();
             try (FileInputStream fileInputStream = new FileInputStream(file)) {
                 Constructor constructor = new Constructor(generatorClass, new LoaderOptions());
